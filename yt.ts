@@ -16,6 +16,7 @@ type playlistItem = {
   snippet: {
     title: string,
     description: string,
+    channelId: string,
   },
   contentDetails: {
     videoId: string,
@@ -32,9 +33,16 @@ type playlistItemsListResponse = {
   items: playlistItem[],
 };
 
-export async function getAllChannelsUploads(yt: YouTube, channelIds: string[]): Promise<Set<string>> {
+export type video = {
+  channelId: string,
+  id: string,
+  title: string,
+};
+
+export async function getAllChannelsUploads(yt: YouTube, channelIds: string[]): Promise<Set<video>> {
   const uploadsPlaylistIds = await getChannelUploadsIds(yt, channelIds);
-  return await getPlaylistsAllTitles(yt, uploadsPlaylistIds);
+
+  return await getPlaylistsAllVideos(yt, uploadsPlaylistIds);
 }
 
 async function getChannelUploadsIds(yt: YouTube, channelIds: string[]): Promise<string[]> {
@@ -48,10 +56,10 @@ async function getChannelUploadsIds(yt: YouTube, channelIds: string[]): Promise<
   });
 }
 
-async function getPlaylistsAllTitles(yt: YouTube, playlistIds: string[]): Promise<Set<string>> {
+async function getPlaylistsAllVideos(yt: YouTube, playlistIds: string[]): Promise<Set<video>> {
   let itemsFetched = 0;
   let allItemsCount = 0;
-  const fetchedVideos = new Set<string>();
+  const fetchedVideos = new Set<video>();
   let nextPageToken: string | undefined; 
 
   do {
@@ -62,11 +70,14 @@ async function getPlaylistsAllTitles(yt: YouTube, playlistIds: string[]): Promis
       pageToken: nextPageToken ?? '',
     });
 
-    const fetchedTitles = playlistsRes.items.map(video => {
-      return `${video.snippet.title}-${video.contentDetails.videoId}`;
+    playlistsRes.items.forEach(video => {
+      fetchedVideos.add({
+        channelId: video.snippet.channelId,
+        id: video.contentDetails.videoId,
+        title: video.snippet.title,
+      });
     });
 
-    fetchedTitles.forEach(title => fetchedVideos.add(title));
     itemsFetched += playlistsRes.pageInfo.resultsPerPage;
     allItemsCount = playlistsRes.pageInfo.totalResults;
     nextPageToken = playlistsRes.nextPageToken;
