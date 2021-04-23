@@ -5,8 +5,6 @@ export async function videosInDirectories(dirs: string[]): Promise<Set<string>> 
   const titles = new Set<string>();
 
   for (const dir of dirs) {
-    console.log(`checking directory ${dir}`);
-
     for await (const entry of walk(dir)) {
       if (entry.isDirectory) continue;
 
