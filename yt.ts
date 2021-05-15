@@ -39,7 +39,7 @@ export type video = {
   title: string,
 };
 
-export async function getAllChannelsUploads(yt: YouTube, channelIds: string[]): Promise<Set<video>> {
+export async function getAllChannelsUploads(yt: YouTube, channelIds: string[]): Promise<Map<string, video>> {
   const uploadsPlaylistIds = await getChannelUploadsIds(yt, channelIds);
 
   return await getPlaylistsAllVideos(yt, uploadsPlaylistIds);
@@ -56,10 +56,10 @@ async function getChannelUploadsIds(yt: YouTube, channelIds: string[]): Promise<
   });
 }
 
-async function getPlaylistsAllVideos(yt: YouTube, playlistIds: string[]): Promise<Set<video>> {
+async function getPlaylistsAllVideos(yt: YouTube, playlistIds: string[]): Promise<Map<string, video>> {
   let itemsFetched = 0;
   let allItemsCount = 0;
-  const fetchedVideos = new Set<video>();
+  const fetchedVideos = new Map<string, video>();
   let nextPageToken: string | undefined; 
 
   do {
@@ -71,7 +71,7 @@ async function getPlaylistsAllVideos(yt: YouTube, playlistIds: string[]): Promis
     });
 
     playlistsRes.items.forEach(video => {
-      fetchedVideos.add({
+      fetchedVideos.set(video.contentDetails.videoId, {
         channelId: video.snippet.channelId,
         id: video.contentDetails.videoId,
         title: video.snippet.title,

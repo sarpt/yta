@@ -10,8 +10,10 @@ const dataDirName = '.yta';
 enum ArgNames {
   ApiKey = 'api-key',
   Dir = 'dir',
+  Download = 'download',
   DryRun = 'dry-run',
   StoreDir = 'store',
+  SyncLocal = 'sync-local',
   UseCwd = 'use-cwd',
   YoutbeDlPath = 'yt-dl',
 }
@@ -24,8 +26,10 @@ enum EnvNames {
 interface Arguments extends Args {
   apiKey?: string, 
   dir?: string,
+  download?: boolean,
   dryRun?: boolean,
   storeDir?: string,
+  syncLocal?: boolean,
   useCwd?: boolean,
   youtubeDlPath?: string,
 }
@@ -33,8 +37,10 @@ interface Arguments extends Args {
 type Config = {
   apiKey?: string,
   dir?: string,
+  download: boolean,
   dryRun: boolean,
   storeDir: string,
+  syncLocal: boolean,
   youtubeDlPath?: string,
   urls: string[],
 }
@@ -71,8 +77,10 @@ async function createConfig(): Promise<Config> {
   const newConfig = {
     apiKey: args.apiKey ?? env.apiKey ?? file.apiKey,
     dir: args.dir,
+    download: args.download ?? true,
     dryRun: args.dryRun ?? false,
     storeDir: args.storeDir ?? getDataPath() ?? Deno.cwd(),
+    syncLocal: args.syncLocal ?? true,
     youtubeDlPath: args.youtubeDlPath ?? env.youtubeDlPath ?? file.youtubeDlPath,
     urls: args.urls ?? [],
   };
@@ -103,8 +111,10 @@ function readArguments() {
   return {
     apiKey: args[ArgNames.ApiKey],
     dir: args[ArgNames.Dir],
+    download: args[ArgNames.Download],
     dryRun: args[ArgNames.DryRun],
     storeDir: args[ArgNames.StoreDir],
+    syncLocal: args[ArgNames.SyncLocal],
     useCwd: args[ArgNames.UseCwd],
     youtubeDlPath: args[ArgNames.YoutbeDlPath],
     urls, 

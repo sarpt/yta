@@ -37,5 +37,5 @@ export async function saveStore(dirPath: string, store: Store) {
   const filepath = join(dirPath, filename);
   const jsonContent = JSON.stringify(store);
 
-  await Deno.writeTextFile(filepath, jsonContent);
+  await Deno.writeTextFile(filepath, jsonContent, { create: true });
 }
