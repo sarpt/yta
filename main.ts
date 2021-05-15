@@ -59,7 +59,7 @@ function syncLocalState(store: Store, missingFromStorePaths: Set<string>, upload
   const { matching: missingFromStoreVideos } = matchPathsToVideos(missingFromStorePaths, uploadedVideos);
 
   if (!missingFromStoreVideos.size) {
-    console.info('INF: all local videos are saved in store');
+    console.info('INF: no local videos missing from store');
 
     return;
   }

@@ -5,7 +5,7 @@ Simple wrapper over `youtube-dl` that syncs directory contents to current state 
 Pretty much a tinkering project to learn/understand `deno`, always in a "not-really-working" state.
 
 ### execution example
-```deno run --unstable --allow-net=www.googleapis.com --allow-env --allow-read main.ts --dir="/path/to/dir" https://www.youtube.com/channel/<id>```
+```deno run --unstable --allow-net=www.googleapis.com --allow-env --allow-read --allow-write --allow-run main.ts --dir="/path/to/dir" https://www.youtube.com/channel/<id>```
 
 ### dependencies for running
 
@@ -16,8 +16,8 @@ Pretty much a tinkering project to learn/understand `deno`, always in a "not-rea
 ### permissions
 
 - `allow-env` - for reading environment variables which overwrite config file options
-- `allow-read` - for reading directories for downloaded videos and reading `$HOME/.config/yta.json` file with configuration
-- `allow-write` - for saving `$HOME/.config/yta.json` file with configuration
+- `allow-read` - for reading directories for downloaded videos and reading `$HOME/.config/yta.json` file with configuration and `$HOME/.yta/store.json` file with store information
+- `allow-write` - for saving `$HOME/.config/yta.json` file with configuration and `$HOME/.yta/store.json` file with store information
 - `allow-run` - for executing `youtube-dl` to download videos 
 
 ### arguments
@@ -35,12 +35,12 @@ Unnamed arguments are treated as URLs for youtube channels for which the video i
 
 ### environment variables
 
-- `YTA_API_KEY` - YouTube Data API v3
+- `YTA_API_KEY` - YouTube Data API v3 key
 - `YTA_YOUTUBE_DL` - name/path to the `youtube-dl` executable
 
 ### config
 
 The config file should reside in `$HOME/.config/yta.json`.
 
-- `apiKey` - YouTube Data API v3
+- `apiKey` - YouTube Data API v3 key
 - `youtubeDlPath` - name/path to the `youtube-dl` executable

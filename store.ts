@@ -1,7 +1,7 @@
 import { join } from 'https://deno.land/std@0.92.0/path/mod.ts';
 import { exists } from 'https://deno.land/std@0.92.0/fs/mod.ts';
 
-const filename = 'yta_store.json';
+const filename = 'store.json';
 
 export type PlaylistEntry = {
   id: string,
@@ -34,6 +34,8 @@ export async function getStore(dirPath: string): Promise<Store | undefined> {
 }
 
 export async function saveStore(dirPath: string, store: Store) {
+  if (!await exists(dirPath)) await Deno.mkdir(dirPath, { recursive: true });
+
   const filepath = join(dirPath, filename);
   const jsonContent = JSON.stringify(store);
 
