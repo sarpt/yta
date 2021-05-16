@@ -3,7 +3,7 @@ import { YouTube } from 'https://deno.land/x/youtube@v0.3.0/mod.ts';
 import { exists } from 'https://deno.land/std@0.92.0/fs/mod.ts';
 
 import { getConfig } from "./config.ts";
-import { videosOnDisk } from "./fs.ts";
+import { videoIdsInDirectory } from "./fs.ts";
 import { getStore, saveStore, Store } from './store.ts';
 import { getAllChannelsUploads, video } from "./yt.ts";
 import { archive, downloadVideos } from "./ytdl.ts";
@@ -42,7 +42,7 @@ async function main() {
   if (config.dir) addPathToChannelIds(store, configChannelIds, config.dir);
 
   const directories = Object.values(store.playlists).map(playlist => { return playlist.path; });
-  const videosOnDiskFilenames = await videosOnDisk(directories);
+  const videosOnDiskFilenames = await videoIdsInDirectory(directories);
 
   const { missingFromDiskIds, missingFromStoreIds } = await checkStoreWithVideosOnDisk(store, videosOnDiskFilenames);
 
