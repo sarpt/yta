@@ -30,7 +30,3 @@ export function getIdFromFilename(name: string): string | undefined {
   const fileNameParts = name.split(filenameSeparator);
   return fileNameParts[fileNameParts.length - 1];
 } 
-
-export function createFilename(title: string, id: string): string {
-  return `${title}${filenameSeparator}${id}`;
-}

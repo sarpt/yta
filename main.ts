@@ -3,13 +3,19 @@ import { YouTube } from 'https://deno.land/x/youtube@v0.3.0/mod.ts';
 import { exists } from 'https://deno.land/std@0.92.0/fs/mod.ts';
 
 import { getConfig } from "./config.ts";
-import { videosInDirectories } from "./fs.ts";
+import { videosOnDisk } from "./fs.ts";
 import { getStore, saveStore, Store } from './store.ts';
 import { getAllChannelsUploads, video } from "./yt.ts";
-import { archive, createFilename, downloadVideos, getIdFromFilename } from "./ytdl.ts";
+import { archive, downloadVideos } from "./ytdl.ts";
 
 async function main() {
   const config = await getConfig();
+
+  if (!config.apiKey) {
+    console.error('ERR: YouTube Data API key not specified');
+    Deno.exit(1);
+  }
+
   let store = await getStore(config.storeDir);
  
   if (!store) {
@@ -23,13 +29,7 @@ async function main() {
     console.info(`INF: using store in path '${config.storeDir}'`);
   }
 
-  if (!config.apiKey) {
-    console.error('ERR: YouTube Data API key not specified');
-    Deno.exit(1);
-  }
-
   const configChannelIds = config.urls.map(urlToChannelId);
-
   const channelUrls = configChannelIds.length < 1
     ? Object.keys(store.playlists)
     : configChannelIds;
@@ -42,21 +42,24 @@ async function main() {
   if (config.dir) addPathToChannelIds(store, configChannelIds, config.dir);
 
   const directories = Object.values(store.playlists).map(playlist => { return playlist.path; });
-  const videosPaths = await videosInDirectories(directories);
+  const videosOnDiskFilenames = await videosOnDisk(directories);
 
-  const { missingFromDiskPaths, missingFromStorePaths } = await checkStoreWithVideosOnDisk(store, videosPaths);
+  const { missingFromDiskIds, missingFromStoreIds } = await checkStoreWithVideosOnDisk(store, videosOnDiskFilenames);
 
   const yt = new YouTube(config.apiKey, false);
   const uploadedVideos = await getAllChannelsUploads(yt, configChannelIds);
 
-  if (config.syncLocal) syncLocalState(store, missingFromStorePaths, uploadedVideos);
-  if (config.download) await downloadMissingVideos(store, missingFromDiskPaths, uploadedVideos, videosPaths);
+  if (config.syncLocal) syncLocalState(store, missingFromStoreIds, uploadedVideos);
+  if (config.download) {
+    const videosToDownload = getMissingVideos(missingFromDiskIds, uploadedVideos, videosOnDiskFilenames);
+    await downloadMissingVideos(store, videosToDownload);
+  } 
 
   if (!config.dryRun) saveStore(config.storeDir, store);
 }
 
 function syncLocalState(store: Store, missingFromStorePaths: Set<string>, uploadedVideos: Map<string, video>) {
-  const { matching: missingFromStoreVideos } = matchPathsToVideos(missingFromStorePaths, uploadedVideos);
+  const { matching: missingFromStoreVideos } = matchIdsToVidoes(missingFromStorePaths, uploadedVideos);
 
   if (!missingFromStoreVideos.size) {
     console.info('INF: no local videos missing from store');
@@ -76,17 +79,21 @@ function syncLocalState(store: Store, missingFromStorePaths: Set<string>, upload
   }
 }
 
-async function downloadMissingVideos(store: Store, missingFromDiskPaths: Set<string>, uploadedVideos: Map<string, video>, videosPaths: Set<string>) {
-  const { matching: missingFromDiskVideos } = matchPathsToVideos(missingFromDiskPaths, uploadedVideos);
-  const { different: differentVideos } = groupVideos(uploadedVideos, videosPaths);
+function getMissingVideos(missingFromDiskIds: Set<string>, uploadedVideos: Map<string, video>, videosOnDiskIds: Set<string>): Set<video> {
+  const { matching: missingFromDiskVideos } = matchIdsToVidoes(missingFromDiskIds, uploadedVideos);
+  const missingVideos = getMissingIds(uploadedVideos, videosOnDiskIds);
 
-  const videosToFetch = new Set<video>([
-    ...differentVideos,
+  return new Set<video>([
+    ...missingVideos,
     ...missingFromDiskVideos.values()
   ]);
+}
 
-  console.info('INF: videos to fetch:');
-  for (const video of videosToFetch) {
+async function downloadMissingVideos(store: Store, videosToDownload: Set<video>) {
+  const config = await getConfig();
+
+  console.info('INF: videos to download:');
+  for (const video of videosToDownload) {
     addVideo(store, {
       channelId: video.channelId,
       id: video.id,
@@ -96,7 +103,9 @@ async function downloadMissingVideos(store: Store, missingFromDiskPaths: Set<str
     console.info(`INF: ${video.title} [${video.id}]`);
   }
 
-  const archives = archivesToUpdate(store, videosToFetch);
+  if (config.dryRun) return;
+
+  const archives = archivesToUpdate(store, videosToDownload);
   await downloadVideos([...archives.values()]);
 }
 
@@ -146,53 +155,45 @@ function archivesToUpdate(store: Store, videos: Set<video>): Map<string, archive
   return archives;
 }
 
-async function checkStoreWithVideosOnDisk(store: Store, onDiskPaths: Set<string>): (Promise<{
-  missingFromStorePaths: Set<string>,
-  missingFromDiskPaths: Set<string>,
+async function checkStoreWithVideosOnDisk(store: Store, onDiskIds: Set<string>): (Promise<{
+  missingFromStoreIds: Set<string>,
+  missingFromDiskIds: Set<string>,
 }>) {
-  const missingFromDiskPaths = new Set<string>();
+  const missingFromDiskIds = new Set<string>();
 
   for (const video of Object.values(store.videos)) {
     const path = store.playlists[video.channelId].path;
     const pathExists = await exists(path);
     if (pathExists) continue;
 
-    missingFromDiskPaths.add(path);
+    missingFromDiskIds.add(video.id);
   }
 
-  const missingFromStorePaths = new Set<string>();
+  const missingFromStoreIds = new Set<string>();
 
-  for (const path of onDiskPaths) {
-    const id = getIdFromFilename(path);
-    if (!id || store.videos[id]) continue;
+  for (const id of onDiskIds) {
+    if (store.videos[id]) continue;
 
-    missingFromStorePaths.add(path);
+    missingFromStoreIds.add(id);
   }
 
   return {
-    missingFromDiskPaths,
-    missingFromStorePaths,
+    missingFromDiskIds,
+    missingFromStoreIds,
   };
 }
 
-function matchPathsToVideos(paths: Set<string>, allVideos: Map<string, video>): ({
+function matchIdsToVidoes(ids: Set<string>, videos: Map<string, video>): ({
   matching: Map<string, video>,
   missing: Set<string>,
 }) {
   const matching = new Map<string, video>();
   const missing = new Set<string>();
 
-  for (const path of paths) {
-    const id = getIdFromFilename(path);
-    if (!id) {
-      missing.add(path);
+  for (const id of ids) {
+    const video = videos.get(id);
 
-      continue;
-    }
-
-    const video = allVideos.get(id);
-
-    video ? matching.set(id, video) : missing.add(path);
+    video ? matching.set(id, video) : missing.add(id);
   }
 
   return {
@@ -201,23 +202,16 @@ function matchPathsToVideos(paths: Set<string>, allVideos: Map<string, video>): 
   };
 }
 
-function groupVideos(uploadedVideos: Map<string, video>, videosPaths: Set<string>): ({
-  existing: Set<video>,
-  different: Set<video>,
-}) {
-  const existing = new Set<video>();
-  const different = new Set<video>();
+function getMissingIds(videos: Map<string, video>, ids: Set<string>): Set<video> {
+  const missing = new Set<video>();
 
-  for (const [, video] of uploadedVideos) {
-    videosPaths.has(createFilename(video.title, video.id))
-      ? existing.add(video)
-      : different.add(video);
+  for (const [, video] of videos) {
+    if (ids.has(video.id)) continue;
+
+    missing.add(video);
   }
 
-  return {
-    existing,
-    different,
-  };
+  return missing;
 }
 
 function urlToChannelId(url: string): string {
