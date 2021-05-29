@@ -111,7 +111,7 @@ function addPathToChannelIds(store: Store, channelIds: string[], path: string) {
   for (const channelId of channelIds) {
     const playlist = store.playlists[channelId];
 
-    if (playlist) {
+    if (playlist && !playlist.paths.includes(path)) {
       playlist.paths = [...playlist.paths, path];
 
       continue;

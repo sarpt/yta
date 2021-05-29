@@ -1,21 +1,19 @@
-import { parse } from 'https://deno.land/std@0.92.0/path/mod.ts';
-import { walk } from 'https://deno.land/std@0.92.0/fs/mod.ts';
-
+import { parse } from "https://deno.land/std@0.92.0/path/mod.ts";
 import { getIdFromFilename } from "./ytdl.ts";
 
 export async function videoIdsInDirectory(dirs: Iterable<string>): Promise<Set<string>> {
-  const titles = new Set<string>();
+  const ids = new Set<string>();
 
   for (const dir of dirs) {
-    for await (const entry of walk(dir)) {
-      if (entry.isDirectory) continue;
+    for await (const entry of Deno.readDir(dir)) { // ReadDir used for not descending recursevily into directories TODO: add --recursive
+      if (!entry.isFile) continue;
 
-      const id = getIdFromFilename(parse(entry.path).name);
+      const id = getIdFromFilename(parse(entry.name).name);
       if (!id) continue;
 
-      titles.add(id);
+      ids.add(id);
     }
   }
 
-  return titles;
+  return ids;
 }
