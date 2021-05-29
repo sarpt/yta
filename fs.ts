@@ -3,7 +3,7 @@ import { walk } from 'https://deno.land/std@0.92.0/fs/mod.ts';
 
 import { getIdFromFilename } from "./ytdl.ts";
 
-export async function videoIdsInDirectory(dirs: string[]): Promise<Set<string>> {
+export async function videoIdsInDirectory(dirs: Iterable<string>): Promise<Set<string>> {
   const titles = new Set<string>();
 
   for (const dir of dirs) {

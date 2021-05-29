@@ -5,7 +5,7 @@ const filename = 'store.json';
 
 export type PlaylistEntry = {
   id: string,
-  path: string,
+  paths: string[],
 };
 
 export type Playlists = Record<string, PlaylistEntry>;
